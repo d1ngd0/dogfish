@@ -403,10 +403,15 @@ function migrate() {
 function create_migration() {
   up_template=${1}
   down_template=${2}
+  if [ "$db_type" == "shell" ]; then
+    suffix="sh"
+  else
+    suffix="sql"
+  fi
   date=$(date +%Y%m%d%H%M%S)
   migration_name=$(echo "${migration_name}" | tr ' ' '-')
-  upfile=${migrations_dir}/migrate-${date}-${migration_name}.sql;
-  downfile=${migrations_dir}/rollback-${date}-${migration_name}.sql;
+  upfile=${migrations_dir}/${date}-${migration_name}-up.${suffix};
+  downfile=${migrations_dir}/${date}-${migration_name}-down.${suffix};
 
   # add the up template
   if [ -z "${up_template}" ]; then
