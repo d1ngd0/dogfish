@@ -145,6 +145,12 @@ function detect_db_type() {
     db_type=pg
     return
   fi
+
+  migrations_dir=$(find_dir_by_pattern "shell[-_]migrations")
+  if [[ ! -z $migrations_dir ]]; then
+    db_type=shell
+    return
+  fi
 }
 
 function available_migrations_to_scripts() {
