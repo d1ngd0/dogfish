@@ -15,6 +15,7 @@ VERSION='1.2.0'
 
 DOGFISH_MYSQL_OPTS=( $DOGFISH_MYSQL_OPTS )
 DOGFISH_PG_OPTS=( $DOGFISH_PG_OPTS )
+SHELL_OPTS="migrations.log"
 
 set -e # Stop on error
 set -o nounset # Error on using unset vars
@@ -228,6 +229,47 @@ function get_suffix() {
   ${db_type}_get_suffix
 }
 
+### Shell interfaces
+
+function shell_db_exec() {
+  echo -e "--- Cannont db_exec for shell migrations."
+  return 1
+}
+
+function shell_create_schema_migrations_table() {
+  touch $SHELL_OPTS
+}
+
+function shell_db_schema_dump() {
+  echo -e "--- Cannot dump schema for shell migrations."
+  return 1
+}
+
+function shell_applied_migrations() {
+  cat $SHELL_OPTS
+  return $?
+}
+
+function shell_post_apply_sql() {
+  if [[ $action == "migrate" ]]; then
+    echo "$1" >> $SHELL_OPTS
+  else
+    sed -i.bak "/$1/d" $SHELL_OPTS
+  fi
+}
+
+function shell_apply_migration_id() {
+  sh ${migrations_dir}/$(available_migration_script_for_id "$1")
+  local result=$?
+  [[ $result -eq 0 ]] && inform done.
+  shell_post_apply_sql "$1"
+  return $result
+}
+
+function shell_get_suffix() {
+  echo "sh"
+}
+
 ### MySQL interface
 
 # Oh god ok so, the mysql tool doesn't return >0 when an error occurs, or
@@ -363,16 +405,16 @@ if [[ -z $action ]]; then
   dogfish create-migration"
 fi
 
-if [[ $action == "migrate" || $action == "rollback" || $action == "remigrate" ]]; then
-  if [[ -z $db_name ]]; then
-    die "Database name not given"
-  fi
-fi
-
 if [[ -z $db_type ]]; then
   detect_db_type
 else
   migrations_dir=${db_type}_migrations
+fi
+
+if [[ $action == "migrate" || $action == "rollback" || $action == "remigrate" ]]; then
+  if [[ -z $db_name ]] && ! [[ "$db_type" ==  "shell" ]]; then
+    die "Database name not given"
+  fi
 fi
 
 if [[ -z $db_type ]]; then
