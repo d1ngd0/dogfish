@@ -162,7 +162,8 @@ function available_migrations_to_scripts() {
   #
   # Quieten shellcheck for this one, we know about it:
   # shellcheck disable=SC2012
-  ls | sed -ne "s/^${action}-\([[:digit:]]\{1,\}\)[-a-zA-Z]*\.sql$/\1 &/p"
+  #ls | sed -ne "s/^${action}-\([[:digit:]]\{1,\}\)[-a-zA-Z]*\.sql$/\1 &/p"
+  ls | sed -ne "s/^\([[:digit:]]\{1,\}\).*-${action}\.$(get_suffix)$/\1 &/p"
   popd >/dev/null
 }
 
@@ -221,6 +222,10 @@ function apply_migration_id() {
   local result=$?
   [[ $result -eq 0 ]] && inform done.
   return $result
+}
+
+function get_suffix() {
+  ${db_type}_get_suffix
 }
 
 ### MySQL interface
@@ -291,6 +296,10 @@ END
   return $?
 }
 
+function mysql_get_suffix() {
+  echo "sql"
+}
+
 ### PostgreSQL interface
 
 function pg_db_exec() {
@@ -340,7 +349,11 @@ END
   return $?
 }
 
-### Preflight checks
+function pg_get_suffix() {
+  echo "sql"
+}
+
+### Preflight checks/
 
 if [[ -z $action ]]; then
   die "Action not given. Use one of:\n
@@ -410,8 +423,8 @@ function create_migration() {
   fi
   date=$(date +%Y%m%d%H%M%S)
   migration_name=$(echo "${migration_name}" | tr ' ' '-')
-  upfile=${migrations_dir}/${date}-${migration_name}-up.${suffix};
-  downfile=${migrations_dir}/${date}-${migration_name}-down.${suffix};
+  upfile=${migrations_dir}/${date}-${migration_name}-migrate.$(get_suffix);
+  downfile=${migrations_dir}/${date}-${migration_name}-rollback.$(get_suffix);
 
   # add the up template
   if [ -z "${up_template}" ]; then
